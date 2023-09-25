@@ -1,7 +1,10 @@
 #include <iostream>
+#include <cstring>
 #include <fstream>
+
 #define VECTOR 0;
 #define MATRIX 1;
+
 using namespace std;
 
 class AdjacencyMatrix {
@@ -26,9 +29,9 @@ class Graph {
 
             graph_input >> n;
 
-            if(adj_representation == "vector")
+            if(strcmp(adj_representation, "vector") == 0)
                 representation = VECTOR;
-            if(adj_representation == "matrix")
+            if(strcmp(adj_representation, "matrix") == 0)
                 representation = MATRIX;
         
             int v1, v2;
