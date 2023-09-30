@@ -97,18 +97,6 @@ class Graph {
 
         }
 
-    void show_representation(){
-        cout << representation << "\n";
-    }
-
-    void print(){
-        if(representation){
-            adj_mx.print(); 
-        }
-        else{
-            adj_v.print();
-        }
-    }
 };
 
 /*
