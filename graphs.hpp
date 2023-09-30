@@ -187,6 +187,48 @@ class Graph {
         output.close();
     }
 
+     int distance(int vertex1, int vertex2){    // distance between two vertices
+        if(vertex1 == vertex2)
+            return 0;
+        
+        vector<bool> visited(n, 0);
+        vector<int> level(n, -1);
+        queue<int> queue;
+
+        visited[vertex1 - 1] = 1;
+        queue.push(vertex1);                // push root to queue
+        level[vertex1 - 1] = 0;             // level of the root is 0
+
+        while(!queue.empty()){
+            int current = queue.front();
+            queue.pop();
+
+            if(representation){                // check if graph is represented by matrix or vector
+                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+                    if(adj_mx.m[current - 1][i] && !visited[i]){
+                        if(i + 1 == vertex2)
+                            return level[current - 1] + 1;
+                        visited[i] = 1;
+                        level[i] = level[current - 1] + 1;
+                        queue.push(i + 1);
+                    }
+                }
+            }
+            else{
+                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+                    if(!visited[adj_v.v[current - 1][i] - 1]){
+                        if(adj_v.v[current - 1][i] == vertex2)
+                            return level[current - 1] + 1;
+                        visited[adj_v.v[current - 1][i] - 1] = 1;
+                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+                        queue.push(adj_v.v[current - 1][i]);
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     int diameter(){
         int diameter = 0;
         bool infinite = 0;
