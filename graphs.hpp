@@ -231,14 +231,12 @@ class Graph {
             if(i == 0){
                 for (int i = 0; i < visited.size(); i++) {
                     if(!visited[i])
-                        infinite = 1;
+                        return -1;
                 }
             }
-            if(infinite)
-                break;
         }
 
-        return infinite ? -1 : diameter;
+        return diameter;
     }
 };
 
