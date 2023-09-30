@@ -1,7 +1,9 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <queue>
 #include <vector>
+#include <stack>
 
 #define VECTOR 0;
 #define MATRIX 1;
@@ -63,7 +65,7 @@ class AdjacencyVector {
 class Graph {
     public:
         int n, m;                   // number of vertices (n) and edges (m)                      
-        bool representation;        // graph representation -> vector (0 - false) | matrix (1 - true)
+        bool representation;        // 0 - vector, 1 - matrix
         AdjacencyMatrix adj_mx;
         AdjacencyVector adj_v;
 
@@ -71,7 +73,7 @@ class Graph {
             ifstream graph_input;       // open file
             graph_input.open(file);
 
-            graph_input >> n;           // set N
+            graph_input >> n;           // read number of vertices
 
             if(strcmp(adj_representation, "vector") == 0){   // set graph representation and its data structure
                 representation = VECTOR;
@@ -84,7 +86,7 @@ class Graph {
             }
         
             int v1, v2;         
-            while(!graph_input.eof()){      // read incoming edges
+            while(!graph_input.eof()){      // read edges
                 graph_input >> v1 >> v2;
                 if(representation)
                     adj_mx.insert(v1, v2);
@@ -97,6 +99,93 @@ class Graph {
 
         }
 
+    void bfs(int vertex){
+        vector<bool> visited(n, 0);
+        vector<int> parent(n, -1);
+        vector<int> level(n, -1);
+        queue<int> queue;
+
+        visited[vertex - 1] = 1;
+        queue.push(vertex);                // push root to queue
+        level[vertex - 1] = 0;             // level of the root is 0
+
+        while(!queue.empty()){
+            int current = queue.front();
+            queue.pop();
+
+            if(representation){                // check if graph is represented by matrix or vector
+                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+                    if(adj_mx.m[current - 1][i] && !visited[i]){
+                        visited[i] = 1;
+                        parent[i] = current;
+                        level[i] = level[current - 1] + 1;
+                        queue.push(i + 1);
+                    }
+                }
+            }
+            else{
+                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+                    if(!visited[adj_v.v[current - 1][i] - 1]){
+                        visited[adj_v.v[current - 1][i] - 1] = 1;
+                        parent[adj_v.v[current - 1][i] - 1] = current;
+                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+                        queue.push(adj_v.v[current - 1][i]);
+                    }
+                }
+            }
+        }
+
+        ofstream output;
+        output.open("bfs(" + to_string(vertex) + ")spanning_tree.txt");
+        for (int i = 0; i < parent.size(); i++) {
+            output << parent[i] << " " << level[i] << "\n";
+        }
+        output.close();
+    }
+
+    void dfs(int vertex){
+        vector<bool> visited(n, 0);
+        vector<int> parent(n, -1);
+        vector<int> level(n, -1);
+        stack<int> stack;
+
+        visited[vertex - 1] = 1;
+        stack.push(vertex);                // push root to stack
+        level[vertex - 1] = 0;             // level of the root is 0
+
+        while(!stack.empty()){
+            int current = stack.top();
+            stack.pop();
+            
+            if(representation){                // check if graph is represented by matrix or vector
+                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+                    if(adj_mx.m[current - 1][i] && !visited[i]){
+                        visited[i] = 1;
+                        parent[i] = current;
+                        level[i] = level[current - 1] + 1;
+                        stack.push(i + 1);
+                    }
+                }
+            }
+            else{
+                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+                    if(!visited[adj_v.v[current - 1][i] - 1]){
+                        visited[adj_v.v[current - 1][i] - 1] = 1;
+                        parent[adj_v.v[current - 1][i] - 1] = current;
+                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+                        stack.push(adj_v.v[current - 1][i]);
+                    }
+                }
+            }
+        }
+        
+        ofstream output;
+        output.open("dfs(" + to_string(vertex) + ")spanning_tree.txt");
+        for (int i = 0; i < parent.size(); i++) {
+            output << parent[i] << " " << level[i] << "\n";
+        }
+        output.close();
+    }
 };
 
 /*
