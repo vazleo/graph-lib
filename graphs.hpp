@@ -357,8 +357,6 @@ class Graph {
             sum_degree += degree;
             degrees.push_back(degree);
         }
-        for(int i = 0; i < degrees.size(); i++)
-            cout << degrees[i] << " ";
 
         output << min_degree << " " << max_degree << " " << sum_degree/float(n) << " ";
     
