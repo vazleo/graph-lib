@@ -335,6 +335,44 @@ class Graph {
             output << "\n";
         }
     }
+
+    void output_file(){
+        ofstream output;
+        output.open("output.txt");
+        output << n << " " << m << "\n";
+        
+        int min_degree = n, max_degree = 0, sum_degree = 0;
+        vector<int> degrees;
+        for (int i = 0; i < n; i++) {
+            int degree = 0;
+            if(representation)             // check if graph is represented by matrix or vector
+                degree = count(adj_mx.m[i].begin(), adj_mx.m[i].end(), 1); 
+            else
+                degree = adj_v.v[i].size();
+            
+            if(degree < min_degree)
+                min_degree = degree;
+            if(degree > max_degree)
+                max_degree = degree;
+            sum_degree += degree;
+            degrees.push_back(degree);
+        }
+        for(int i = 0; i < degrees.size(); i++)
+            cout << degrees[i] << " ";
+
+        output << min_degree << " " << max_degree << " " << sum_degree/float(n) << " ";
+    
+        nth_element(degrees.begin(), degrees.begin() + degrees.size()/2, degrees.end());    // find median without sorting - O(n)
+        
+        if (degrees.size() % 2 == 0){   // if number of vertices is even, median is the average of the two middle values
+            nth_element(degrees.begin(), degrees.begin() + degrees.size()/2 - 1, degrees.end());
+            output << (degrees[degrees.size()/2 - 1] + degrees[degrees.size()/2])/2.0;
+        }
+        else                        // if number of vertices is odd, median is the middle value
+            output << degrees[degrees.size()/2]; 
+        
+        output.close();
+    }
 };
 
 /*
