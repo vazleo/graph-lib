@@ -5,6 +5,7 @@
 #include <vector>
 #include <stack>
 #include <algorithm>
+#include <unistd.h>
 
 #define VECTOR 0;
 #define MATRIX 1;
@@ -86,18 +87,19 @@ class Graph {
                 adj_mx.initialize(n);
             }
         
-            int v1, v2;         
-            while(!graph_input.eof()){      // read edges
-                graph_input >> v1 >> v2;
-                if(representation)
+            int v1, v2;
+            m = 0;        
+            
+            while(graph_input >> v1 >> v2){     // read edges
+                if(representation)              // check if graph is represented by matrix or vector
                     adj_mx.insert(v1, v2);
                 else
                     adj_v.insert(v1, v2);
-                    
+                m++;
             }
-            
-            graph_input.close();        // close file
+            m--;                                // last line of file is read twice
 
+            graph_input.close();        // close file
         }
 
     void bfs(int vertex){
@@ -339,7 +341,7 @@ class Graph {
     void output_file(){
         ofstream output;
         output.open("output.txt");
-        output << n << " " << m << "\n";
+        output << "n: " << n << " " << "m: " << m << "\n";
         
         int min_degree = n, max_degree = 0, sum_degree = 0;
         vector<int> degrees;
@@ -358,7 +360,7 @@ class Graph {
             degrees.push_back(degree);
         }
 
-        output << min_degree << " " << max_degree << " " << sum_degree/float(n) << " ";
+        output << "min degree: " << min_degree << "\nmax degree: " << max_degree << "\naverage degree:" << sum_degree/float(n) << "\nmedian degree:";
     
         nth_element(degrees.begin(), degrees.begin() + degrees.size()/2, degrees.end());    // find median without sorting - O(n)
         
