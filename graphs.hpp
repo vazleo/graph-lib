@@ -4,6 +4,7 @@
 #include <queue>
 #include <vector>
 #include <stack>
+#include <algorithm>
 
 #define VECTOR 0;
 #define MATRIX 1;
@@ -190,7 +191,7 @@ class Graph {
      int distance(int vertex1, int vertex2){    // distance between two vertices
         if(vertex1 == vertex2)
             return 0;
-        
+
         vector<bool> visited(n, 0);
         vector<int> level(n, -1);
         queue<int> queue;
@@ -279,6 +280,60 @@ class Graph {
         }
 
         return diameter;
+    }
+
+    void connected_components(){
+        vector<bool> visited(n, 0);
+        vector<vector <int>> components_vertices;
+        int components = 0;
+
+        for (int i = 0; i < n; i++) {
+            if(!visited[i]){
+                components_vertices.push_back({});
+                components++;
+                queue<int> queue;
+
+                visited[i] = 1;
+                queue.push(i + 1);                //push first vertex of component to queue
+                components_vertices[components - 1].push_back(i + 1);
+
+                while(!queue.empty()){
+                    int current = queue.front();
+                    queue.pop();
+
+                    if(representation){                // check if graph is represented by matrix or vector
+                        for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+                            if(adj_mx.m[current - 1][i] && !visited[i]){
+                                visited[i] = 1;
+                                components_vertices[components - 1].push_back(i + 1);
+                                queue.push(i + 1);
+                            }
+                        }
+                    }
+                    else{
+                        for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+                            if(!visited[adj_v.v[current - 1][i] - 1]){
+                                visited[adj_v.v[current - 1][i] - 1] = 1;
+                                components_vertices[components - 1].push_back(adj_v.v[current - 1][i]);
+                                queue.push(adj_v.v[current - 1][i]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        ofstream output;
+        output.open("connected_components.txt");
+        output << components << "\n";
+        sort(components_vertices.begin(), components_vertices.end(), [](const vector<int> & a, const vector<int> & b){ return a.size() > b.size(); }); // order components by size in descending order
+        for (int i = 0; i < components_vertices.size(); i++) {
+            output << components_vertices[i].size() << "\n";
+            for (int j = 0; j < components_vertices[i].size(); j++) {
+                output << components_vertices[i][j] << " ";
+            }
+            output << "\n";
+        }
     }
 };
 
