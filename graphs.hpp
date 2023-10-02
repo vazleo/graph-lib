@@ -284,6 +284,60 @@ class Graph {
         return diameter;
     }
 
+    // aproximate diameter
+    int aprox_diameter(int number_of_samples){
+        int diameter = 0;
+        bool infinite = 0;
+        
+        for (int i = 0; i < number_of_samples; i++) {
+            vector<bool> visited(n, 0);
+            vector<int> level(n, -1);
+            queue<int> queue;
+
+            int random_vertex = (rand() % n) + 1;
+            visited[random_vertex - 1] = 1;
+            queue.push(random_vertex);                // push root to queue
+            level[random_vertex - 1] = 0;                       // level of the root is 0
+
+            while(!queue.empty()){
+                int current = queue.front();
+                queue.pop();
+
+                if(representation){                // check if graph is represented by matrix or vector
+                    for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+                        if(adj_mx.m[current - 1][i] && !visited[i]){
+                            visited[i] = 1;
+                            if(level[current - 1] + 1 > diameter)
+                                diameter = level[current - 1] + 1;
+                            level[i] = level[current - 1] + 1;
+                            queue.push(i + 1);
+                        }
+                    }
+                }
+                else{
+                    for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+                        if(!visited[adj_v.v[current - 1][i] - 1]){
+                            visited[adj_v.v[current - 1][i] - 1] = 1;
+                            if(level[current - 1] + 1 > diameter)
+                                diameter = level[current - 1] + 1;
+                            level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+                            queue.push(adj_v.v[current - 1][i]);
+                        }
+                    }
+                }
+            }
+            
+            if(i == 0){
+                for (int i = 0; i < visited.size(); i++) {
+                    if(!visited[i])
+                        return -1;
+                }
+            }
+        }
+
+        return diameter;
+    }
+
     void connected_components(){
         vector<bool> visited(n, 0);
         vector<vector <int>> components_vertices;
