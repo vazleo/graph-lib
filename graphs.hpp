@@ -44,9 +44,10 @@ class AdjacencyVector {
         vector<vector<int>> v;
 
     void initialize(int n){
-        for (int i = 0; i < n; i++) {
+        //reserve memory to not realocate every time a new element is added
+        v.reserve(n);
+        for (int i = 0; i < n; i++)
             v.push_back({});
-        }
     }
 
     void insert(int vertex1, int vertex2){
@@ -83,7 +84,6 @@ class Graph {
             }
             if(strcmp(adj_representation, "matrix") == 0){
                 representation = MATRIX;
-
                 adj_mx.initialize(n);
             }
         
