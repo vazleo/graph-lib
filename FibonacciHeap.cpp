@@ -142,7 +142,11 @@ FibonacciHeap::FibonacciHeap(Node *root)
 
 FibonacciHeap::~FibonacciHeap()
 {
-	delete[] rootListByRank;
+	// delete[] rootListByRank;
+	if(minRoot != NULL)
+		delete minRoot;
+
+	// delete[] rootListByRank was causing a segmentation fault?? warning deleting array and aborted (double free or corruption)
 }
 
 bool FibonacciHeap::isEmpty()
