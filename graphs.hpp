@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <map>
 #include <limits>
+#include <set>
 
 #include "FibonacciHeap.h"
 
@@ -142,11 +143,6 @@ class Graph {
                     min_index = j;
                 }
             }
-           
-            for (auto i : distance) {
-                cout << i << " ";
-            }
-            cout << endl << "min_index: " << min_index + 1 << endl;
 
             visited[min_index] = 1;
 
@@ -155,7 +151,7 @@ class Graph {
                 int neighbor_index = adj_v.v[min_index][j] - 1;
                 if(distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)] < distance[neighbor_index]){
                     distance[neighbor_index] = distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)];
-                    parent[neighbor_index] = min_index + 1;D
+                    parent[neighbor_index] = min_index + 1;
                 }
             }
         }
@@ -192,6 +188,7 @@ class Graph {
                     if(current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])] < vertices[adj_v.v[current->data - 1][i] - 1]->key){
                         vertices[adj_v.v[current->data - 1][i] - 1]->key = current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])];
                         heap.decreaseKey(vertices[adj_v.v[current->data - 1][i] - 1]->key, vertices[adj_v.v[current->data - 1][i] - 1]);
+                        parent[adj_v.v[current->data - 1][i] - 1] = current->data;
                     }
                 }
             }
@@ -204,38 +201,26 @@ class Graph {
         return (v1 < v2) ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
     }
 
+    void path(int search, int target){
+        pair<vector<float>, vector<int>> result = heapDijkstra(search);
+        vector<float> distance = result.first;
+        vector<int> parent = result.second;
 
-    // vector<float> heapDijkstra(int vertex){
-    //     vector<float> distance(n, -1);
-    //     vector<bool> visited(n, 0);
-    //     FibonacciHeap heap;
-    //     vector<Node*> vertices(n);
-
-    //     for (int i = 0; i < n; i++) {
-    //         vertices[i] = new Node(i + 1, INT_MAX);
-    //         heap.insertVertex(vertices[i]);
-    //     }
-
-    //     vertices[vertex - 1]->key = 0;
-    //     heap.decreaseKey(0, vertices[vertex - 1]);
-
-    //     while(!heap.isEmpty()){
-    //         Node* current = heap.deleteMin();
-    //         visited[current->data - 1] = 1;
-    //         distance[current->data - 1] = current->key;
-            
-    //         for (int i = 0; i < adj_v.v[current->data - 1].size(); i++) {           // assume graph is represented by vector
-    //             if(!visited[adj_v.v[current->data - 1][i] - 1]){
-    //                 if(current->key + weights[make_pair(current->data, adj_v.v[current->data - 1][i])] < vertices[adj_v.v[current->data - 1][i] - 1]->key){
-    //                     vertices[adj_v.v[current->data - 1][i] - 1]->key = current->key + weights[make_pair(current->data, adj_v.v[current->data - 1][i])];
-    //                     heap.decreaseKey(vertices[adj_v.v[current->data - 1][i] - 1], vertices[adj_v.v[current->data - 1][i] - 1]->key);
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     return distance;
-    // }
+        ofstream output;
+        output.open("path(" + to_string(search) + "," + to_string(target) + ").txt");
+        output << distance[target - 1] << "\n";
+        vector<int> path;
+        int current = target;
+        while(current != search){
+            path.push_back(current);
+            current = parent[current - 1];
+        }
+        path.push_back(search);
+        for (int i = path.size() - 1; i >= 0; i--) {
+            output << path[i] << " ";
+        }
+        output.close();
+    }
 
     void bfs(int vertex){
         vector<bool> visited(n, 0);

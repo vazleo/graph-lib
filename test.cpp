@@ -82,15 +82,21 @@
 // }
 
 int main(){
-    Graph a = Graph("studie-cases/a.txt", "vector", 1);
-    // for(auto i : a.weights)
-    //     cout << i.second << endl;
-    
-    // auto b = a.vectorDijsktra(1);
-    // for(auto i : b.first)
-    //     cout << i << endl;
+    double elapsed_time = 0;
+    clock_t start = clock();
+    Graph a = Graph("studie-cases/grafo_W_2.txt", "vector", 1);
 
-    auto b = a.heapDijkstra(1);
-    for(auto i : b.second)
-        cout << i << endl;
+    clock_t mid = clock();
+    elapsed_time += double(mid - start) / CLOCKS_PER_SEC;
+    cout << elapsed_time << endl;
+    auto b = a.heapDijkstra(10);
+    
+    cout << b.first[9] << endl;
+
+
+
+    clock_t end = clock();
+    elapsed_time = 0;
+    elapsed_time += double(end - mid) / CLOCKS_PER_SEC;
+    cout << elapsed_time << endl;
 }
