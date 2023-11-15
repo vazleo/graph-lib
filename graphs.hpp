@@ -1,11 +1,18 @@
+#include <cstddef>
 #include <iostream>
 #include <cstring>
 #include <fstream>
 #include <queue>
+#include <utility>
 #include <vector>
 #include <stack>
 #include <algorithm>
 #include <unistd.h>
+#include <map>
+#include <limits>
+#include <set>
+
+#include "FibonacciHeap.h"
 
 #define VECTOR 0;
 #define MATRIX 1;
@@ -44,7 +51,7 @@ class AdjacencyVector {
         vector<vector<int>> v;
 
     void initialize(int n){
-        //reserve memory to not realocate every time a new element is added
+        // reserve memory to not realocate every time a new element is added
         v.reserve(n);
         for (int i = 0; i < n; i++)
             v.push_back({});
@@ -69,10 +76,15 @@ class Graph {
     public:
         int n, m;                   // number of vertices (n) and edges (m)                      
         bool representation;        // 0 - vector, 1 - matrix
+        bool weighted;              // 0 - unweighted, 1 - weighted
+        bool negative_weights = 0;      // 0 - no negative weights, 1 - negative weights
+        float max_float = 10000000;
+        
+        map<pair<int, int>, float> weights;    // map of weights of edges
         AdjacencyMatrix adj_mx;
         AdjacencyVector adj_v;
 
-        Graph(const char* file, const char* adj_representation){ 
+        Graph(const char* file, const char* adj_representation, bool weighted){ 
             ifstream graph_input;       // open file
             graph_input.open(file);
 
@@ -88,6 +100,7 @@ class Graph {
             }
         
             int v1, v2;
+            float weight;
             m = 0;        
             
             while(graph_input >> v1 >> v2){     // read edges
@@ -95,12 +108,119 @@ class Graph {
                     adj_mx.insert(v1, v2);
                 else
                     adj_v.insert(v1, v2);
+
+                if(weighted){
+                    graph_input >> weight;
+                    if(weight < 0) negative_weights = 1;
+                    pair<int, int> ordered_pair = (v1 < v2) ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
+                    weights[ordered_pair] = weight;
+                }
                 m++;
             }
             m--;                                // last line of file is read twice
 
             graph_input.close();        // close file
         }
+
+    pair<vector<float>, vector<int>> vectorDijsktra(int vertex){
+        if(negative_weights){
+            cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
+            return {};
+        }
+
+        vector<float> distance(n, max_float);      
+        vector<bool> visited(n, 0);                
+        vector<int> parent(n, -1);
+        
+        distance[vertex - 1] = 0;                  
+
+        for (int i = 0; i < n; i++) {
+
+            int min_distance = max_float, min_index;
+            for (int j = 0; j < n; j++) { 
+                if(!visited[j] && distance[j] <= min_distance){
+                    min_distance = distance[j];
+                    min_index = j;
+                }
+            }
+
+            visited[min_index] = 1;
+
+            // assume graph is represented by vector
+            for (int j = 0; j < adj_v.v[min_index].size(); j++) {  
+                int neighbor_index = adj_v.v[min_index][j] - 1;
+                if(distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)] < distance[neighbor_index]){
+                    distance[neighbor_index] = distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)];
+                    parent[neighbor_index] = min_index + 1;
+                }
+            }
+        }
+        return make_pair(distance, parent);
+    }
+
+    pair<vector<float>, vector<int>> heapDijkstra(int vertex){
+        if(negative_weights){
+            cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
+            return {};
+        }
+
+        vector<float> distance(n, max_float);
+        vector<bool> visited(n, 0);                 
+        vector<int> parent(n, -1);
+        FibonacciHeap heap;
+        vector<Node*> vertices(n);
+
+        for (int i = 0; i < n; i++) {
+            vertices[i] = new Node(i + 1, max_float);
+            heap.insertVertex(vertices[i]);
+        }
+
+        vertices[vertex - 1]->key = 0;
+        heap.decreaseKey(0, vertices[vertex - 1]);
+
+        while(!heap.isEmpty()){
+            Node* current = heap.deleteMin();
+            visited[current->data - 1] = 1;
+            distance[current->data - 1] = current->key;
+            
+            for (int i = 0; i < adj_v.v[current->data - 1].size(); i++) {           // assume graph is represented by vector
+                if(!visited[adj_v.v[current->data - 1][i] - 1]){
+                    if(current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])] < vertices[adj_v.v[current->data - 1][i] - 1]->key){
+                        vertices[adj_v.v[current->data - 1][i] - 1]->key = current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])];
+                        heap.decreaseKey(vertices[adj_v.v[current->data - 1][i] - 1]->key, vertices[adj_v.v[current->data - 1][i] - 1]);
+                        parent[adj_v.v[current->data - 1][i] - 1] = current->data;
+                    }
+                }
+            }
+        }
+
+        return make_pair(distance, parent);
+    }
+
+    pair<int, int> order_pair(int v1, int v2){
+        return (v1 < v2) ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
+    }
+
+    void path(int search, int target){
+        pair<vector<float>, vector<int>> result = heapDijkstra(search);
+        vector<float> distance = result.first;
+        vector<int> parent = result.second;
+
+        ofstream output;
+        output.open("path(" + to_string(search) + "," + to_string(target) + ").txt");
+        output << distance[target - 1] << "\n";
+        vector<int> path;
+        int current = target;
+        while(current != search){
+            path.push_back(current);
+            current = parent[current - 1];
+        }
+        path.push_back(search);
+        for (int i = path.size() - 1; i >= 0; i--) {
+            output << path[i] << " ";
+        }
+        output.close();
+    }
 
     void bfs(int vertex){
         vector<bool> visited(n, 0);
@@ -273,7 +393,7 @@ class Graph {
                 }
             }
             
-            if(i == 0){
+            if(i == 0){         // check if graph is connected, if not, diameter is infinite
                 for (int i = 0; i < visited.size(); i++) {
                     if(!visited[i])
                         return -1;
