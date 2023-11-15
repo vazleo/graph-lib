@@ -81,22 +81,20 @@
 //     cout << a.diameter() << endl;
 // }
 
-int main(){
-    double elapsed_time = 0;
-    clock_t start = clock();
-    Graph a = Graph("studie-cases/grafo_W_2.txt", "vector", 1);
+// int main(){
+//     double elapsed_time = 0;
+//     clock_t start = clock();
+//     Graph a = Graph("studie-cases/grafo_W_3.txt", "vector", 1);
 
-    clock_t mid = clock();
-    elapsed_time += double(mid - start) / CLOCKS_PER_SEC;
-    cout << elapsed_time << endl;
-    auto b = a.heapDijkstra(10);
+//     clock_t mid = clock();
+//     elapsed_time += double(mid - start) / CLOCKS_PER_SEC;
+//     cout << elapsed_time << endl;
     
-    cout << b.first[9] << endl;
+//     auto b = a.vectorDijsktra(10);
 
 
-
-    clock_t end = clock();
-    elapsed_time = 0;
-    elapsed_time += double(end - mid) / CLOCKS_PER_SEC;
-    cout << elapsed_time << endl;
-}
+//     clock_t end = clock();
+//     elapsed_time = 0;
+//     elapsed_time += double(end - mid) / CLOCKS_PER_SEC;
+//     cout << elapsed_time << endl;
+// }
