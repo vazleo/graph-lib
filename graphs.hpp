@@ -158,6 +158,107 @@ class Graph {
         return make_pair(distance, parent);
     }
 
+    // pair<vector<float>, vector<int>> heapDijkstra(int vertex){
+    //     // using minheap
+    //     if(negative_weights){
+    //         cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
+    //         return {};
+    //     }
+
+    //     vector<float> distance(n, max_float);
+    //     vector<bool> visited(n, 0);
+    //     vector<int> parent(n, -1);
+    //     MinHeap heap;
+
+    //     for (int i = 0; i < n; i++) {
+    //         heap.insert(make_pair(i + 1, max_float));
+    //     }
+        
+    //     heap.decreaseKey(vertex - 1, 0);
+    //     distance[vertex - 1] = 0;
+
+    //     while(!heap.isEmpty()){
+    //         pair<int, float> current = heap.deleteMin();
+    //         visited[current.first - 1] = 1;
+            
+    //         for (int i = 0; i < adj_v.v[current.first - 1].size(); i++) {           // assume graph is represented by vector
+    //             if(!visited[adj_v.v[current.first - 1][i] - 1]){
+    //                 if(current.second + weights[order_pair(current.first, adj_v.v[current.first - 1][i])] < distance[adj_v.v[current.first - 1][i] - 1]){
+    //                     distance[adj_v.v[current.first - 1][i] - 1] = current.second + weights[order_pair(current.first, adj_v.v[current.first - 1][i])];
+    //                     heap.decreaseKey(adj_v.v[current.first - 1][i] - 1, distance[adj_v.v[current.first - 1][i] - 1]);
+    //                     parent[adj_v.v[current.first - 1][i] - 1] = current.first;
+    //                 }
+    //             }
+    //         }
+    //     }
+        
+    //     return make_pair(distance, parent);
+    // }
+
+    // class MinHeap{
+    //     // min heap using priority queue and vector to store vertices
+    //     public:
+    //         vector<pair<int, float>> heap;
+    //         int size = 0;
+
+    //         void insert(pair<int, float> vertex){
+    //             heap.push_back(vertex);
+    //             size++;
+    //             int i = size - 1;
+    //             while(i != 0 && heap[parent(i)].second > heap[i].second){
+    //                 swap(heap[i], heap[parent(i)]);
+    //                 i = parent(i);
+    //             }
+    //         }
+
+    //         pair<int, float> deleteMin(){
+    //             pair<int, float> min = heap[0];
+    //             heap[0] = heap[size - 1];
+    //             heap.pop_back();
+    //             size--;
+    //             heapify(0);
+    //             return min;
+    //         }
+
+    //         void heapify(int i){
+    //             int l = left(i);
+    //             int r = right(i);
+    //             int smallest = i;
+    //             if(l < size && heap[l].second < heap[i].second)
+    //                 smallest = l;
+    //             if(r < size && heap[r].second < heap[smallest].second)
+    //                 smallest = r;
+    //             if(smallest != i){
+    //                 swap(heap[i], heap[smallest]);
+    //                 heapify(smallest);
+    //             }
+    //         }
+
+    //         void decreaseKey(int i, float new_key){
+    //             heap[i].second = new_key;
+    //             while(i != 0 && heap[parent(i)].second > heap[i].second){
+    //                 swap(heap[i], heap[parent(i)]);
+    //                 i = parent(i);
+    //             }
+    //         }
+
+    //         bool isEmpty(){
+    //             return size == 0;
+    //         }
+
+    //         int parent(int i){
+    //             return (i - 1)/2;
+    //         }
+
+    //         int left(int i){
+    //             return 2*i + 1;
+    //         }
+
+    //         int right(int i){
+    //             return 2*i + 2;
+    //         }
+    // };
+
     pair<vector<float>, vector<int>> heapDijkstra(int vertex){
         if(negative_weights){
             cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
