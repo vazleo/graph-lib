@@ -84,7 +84,7 @@
 // int main(){
 //     double elapsed_time = 0;
 //     clock_t start = clock();
-//     Graph a = Graph("studie-cases/grafo_W_3.txt", "vector", 1);
+//     Graph a = Graph("studie-cases/grafo_W_2.txt", "vector", 1);
 
 //     clock_t mid = clock();
 //     elapsed_time += double(mid - start) / CLOCKS_PER_SEC;
@@ -98,3 +98,24 @@
 //     elapsed_time += double(end - mid) / CLOCKS_PER_SEC;
 //     cout << elapsed_time << endl;
 // }
+
+int main(){
+    //direcionado ou nao
+    //em arquivo ou nao e mostrando o fluxo
+    double elapsed_time = 0;
+    clock_t start = clock();
+    Graph a = Graph("studie-cases/trab3/grafo_rf_1.txt", "vector", 1);
+
+    clock_t mid = clock();
+    elapsed_time += double(mid - start) / CLOCKS_PER_SEC;
+    cout << elapsed_time << endl;
+
+    cout << a.ford_fulkerson(1, 2) << endl;
+
+    clock_t end = clock();
+
+    elapsed_time = 0;
+
+    elapsed_time += double(end - mid) / CLOCKS_PER_SEC;
+    cout << elapsed_time << endl;
+}

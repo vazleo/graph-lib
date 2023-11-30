@@ -19,7 +19,7 @@
 
 using namespace std;
 
-class AdjacencyMatrix {
+class AdjacencyMatrix {  // not modified to work with weighted graphs
     public:
         int n;
         vector<vector<bool>> m;
@@ -47,8 +47,9 @@ class AdjacencyMatrix {
 };
 
 class AdjacencyVector {
-    public:
-        vector<vector<int>> v;
+public:
+    // contains target of edges, flow and capacity
+    vector<vector<tuple<int, int, int>>> v; // target of edges, flow, capacity
 
     void initialize(int n){
         // reserve memory to not realocate every time a new element is added
@@ -57,15 +58,14 @@ class AdjacencyVector {
             v.push_back({});
     }
 
-    void insert(int vertex1, int vertex2){
-        v[vertex1 - 1].push_back(vertex2);          
-        v[vertex2 - 1].push_back(vertex1);
+    void insert(int vertex1, int vertex2, int flow, int capacity){
+        v[vertex1 - 1].push_back(make_tuple(vertex2, flow, capacity)); // insert vertex2 to vertex1's list
     }
 
     void print(){     
         for (int i = 0; i < v.size(); i++) {
             for (int j = 0; j < v[i].size(); j++) {
-                cout << v[i][j] << " ";
+                cout << get<0>(v[i][j]) << " " << get<1>(v[i][j]) << " " << get<2>(v[i][j]) << " ";
             }
             cout << "\n";   // endl performs significantly worse than \n
         }
@@ -75,12 +75,11 @@ class AdjacencyVector {
 class Graph {
     public:
         int n, m;                   // number of vertices (n) and edges (m)                      
-        bool representation;        // 0 - vector, 1 - matrix
-        bool weighted;              // 0 - unweighted, 1 - weighted
+        bool representation = 0;        // 0 - vector, 1 - matrix
+        bool weighted = 1;              // 0 - unweighted, 1 - weighted
         bool negative_weights = 0;      // 0 - no negative weights, 1 - negative weights
         float max_float = 10000000;
         
-        map<pair<int, int>, float> weights;    // map of weights of edges
         AdjacencyMatrix adj_mx;
         AdjacencyVector adj_v;
 
@@ -90,30 +89,21 @@ class Graph {
 
             graph_input >> n;           // read number of vertices
 
-            if(strcmp(adj_representation, "vector") == 0){   // set graph representation and its data structure
-                representation = VECTOR;
-                adj_v.initialize(n);
-            }
-            if(strcmp(adj_representation, "matrix") == 0){
-                representation = MATRIX;
-                adj_mx.initialize(n);
-            }
+                // set graph representation and its data structure
+            representation = VECTOR;
+            adj_v.initialize(n);
         
             int v1, v2;
-            float weight;
+            int weight;
             m = 0;        
             
             while(graph_input >> v1 >> v2){     // read edges
-                if(representation)              // check if graph is represented by matrix or vector
-                    adj_mx.insert(v1, v2);
-                else
-                    adj_v.insert(v1, v2);
+                //**only working with adj_v for now
 
                 if(weighted){
                     graph_input >> weight;
                     if(weight < 0) negative_weights = 1;
-                    pair<int, int> ordered_pair = (v1 < v2) ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
-                    weights[ordered_pair] = weight;
+                    adj_v.insert(v1, v2, 0, weight);
                 }
                 m++;
             }
@@ -122,41 +112,137 @@ class Graph {
             graph_input.close();        // close file
         }
 
-    pair<vector<float>, vector<int>> vectorDijsktra(int vertex){
-        if(negative_weights){
-            cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
-            return {};
-        }
+        //Implement the Ford-Fulkerson algorithm to obtain find the maximum flow of a network of flows. 
+        // Your implementation must return the value of flow and flow allocation in each area, with an 
+        // option to store the result on disk (edges and flow, one per line).
 
-        vector<float> distance(n, max_float);      
-        vector<bool> visited(n, 0);                
-        vector<int> parent(n, -1);
+    int ford_fulkerson(int source, int sink){
+            // create a residual graph
+            AdjacencyVector residual = adj_v;
+            
+            // add reverse edges to the residual graph
+            for(int u = 1; u <= n; u++){
+                for(int i = 0; i < adj_v.v[u - 1].size(); i++){
+                    residual.insert(get<0>(adj_v.v[u - 1][i]), u, -1, 0);
+                }
+            }
+            
+            // residual.print();
+
+            // This array is filled by BFS and to store path
+            vector<int> parent(n, -1);
+
+            // Augment the flow while there is path from source to sink
+            int max_flow = 0;
+
+            while(bfs_ff(source, sink, parent, residual)){
+                // find minimum residual capacity of the edges along the path filled by BFS
+                int path_flow = max_float;
+
+                for(int v = sink; v != source; v = parent[v - 1]){
+                    int u = parent[v - 1];
+                    path_flow = min(path_flow, find_capacity(residual, u, v));
+                }
+
+                // update residual capacities of the edges and reverse edges along the path
+                for(int v = sink; v != source; v = parent[v - 1]){
+                    int u = parent[v - 1];
+                    update_capacity(residual, u, v, -path_flow);
+                    update_capacity(residual, v, u, path_flow);
+                }
+
+                // add path flow to overall flow
+                max_flow += path_flow;
+            }
         
-        distance[vertex - 1] = 0;                  
+            // return the overall flow
+            return max_flow;
+        }
 
-        for (int i = 0; i < n; i++) {
-
-            int min_distance = max_float, min_index;
-            for (int j = 0; j < n; j++) { 
-                if(!visited[j] && distance[j] <= min_distance){
-                    min_distance = distance[j];
-                    min_index = j;
+        int find_capacity(AdjacencyVector &graph, int u, int v){
+            for(int i = 0; i < graph.v[u - 1].size(); i++){
+                if(get<0>(graph.v[u - 1][i]) == v){
+                    return get<2>(graph.v[u - 1][i]); // return the capacity
                 }
             }
+            return 0;
+        }
 
-            visited[min_index] = 1;
-
-            // assume graph is represented by vector
-            for (int j = 0; j < adj_v.v[min_index].size(); j++) {  
-                int neighbor_index = adj_v.v[min_index][j] - 1;
-                if(distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)] < distance[neighbor_index]){
-                    distance[neighbor_index] = distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)];
-                    parent[neighbor_index] = min_index + 1;
+        void update_capacity(AdjacencyVector &graph, int u, int v, int capacity){
+            for(int i = 0; i < graph.v[u - 1].size(); i++){
+                if(get<0>(graph.v[u - 1][i]) == v){
+                    get<2>(graph.v[u - 1][i]) += capacity; // update the capacity
                 }
             }
         }
-        return make_pair(distance, parent);
-    }
+
+        // Returns true if there is a path from source 's' to sink 't' in residual graph.
+        // Also fills parent[] to store the path
+        bool bfs_ff(int source, int sink, vector<int> &parent, AdjacencyVector &residual){
+            // Create a visited array and mark all vertices as not visited
+            vector<bool> visited(n, false);
+
+            // Create a queue, enqueue source vertex and mark source vertex as visited
+            queue<int> q;
+            q.push(source);
+            visited[source - 1] = 1;
+            parent[source - 1] = -1;
+
+            // Standard BFS Loop
+            while(!q.empty()){
+                int u = q.front();
+                q.pop();
+                for(int i = 0; i < residual.v[u - 1].size(); i++){ // for each adjacent vertex of u
+                    int v = get<0>(residual.v[u - 1][i]); 
+                    int capacity = get<2>(residual.v[u - 1][i]); // get the capacity of the edge
+                    if(visited[v - 1] == false && capacity > 0){
+                        parent[v - 1] = u;
+                        visited[v - 1] = true;
+                        if (v == sink) { 
+                            return true; // return true if we reached the sink
+                        }
+                        q.push(v);
+                    }
+                }
+            }
+            // cout << "No path to the sink found" << endl;
+            return false; // return false if we didn't find a path to the sink
+        }
+    // pair<vector<float>, vector<int>> vectorDijsktra(int vertex){ // Dijkstra's algorithm using vector
+    //     if(negative_weights){
+    //         cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
+    //         return {};
+    //     }
+
+    //     vector<float> distance(n, max_float);      
+    //     vector<bool> visited(n, 0);                
+    //     vector<int> parent(n, -1);
+        
+    //     distance[vertex - 1] = 0;                  
+
+    //     for (int i = 0; i < n; i++) {
+
+    //         int min_distance = max_float, min_index;
+    //         for (int j = 0; j < n; j++) { 
+    //             if(!visited[j] && distance[j] <= min_distance){
+    //                 min_distance = distance[j];
+    //                 min_index = j;
+    //             }
+    //         }
+
+    //         visited[min_index] = 1;
+
+    //         // assume graph is represented by vector
+    //         for (int j = 0; j < adj_v.v[min_index].size(); j++) {  
+    //             int neighbor_index = adj_v.v[min_index][j] - 1;
+    //             if(distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)] < distance[neighbor_index]){
+    //                 distance[neighbor_index] = distance[min_index] + weights[order_pair(min_index + 1, neighbor_index + 1)];
+    //                 parent[neighbor_index] = min_index + 1;
+    //             }
+    //         }
+    //     }
+    //     return make_pair(distance, parent);
+    // }
 
     // pair<vector<float>, vector<int>> heapDijkstra(int vertex){
     //     // using minheap
@@ -259,359 +345,362 @@ class Graph {
     //         }
     // };
 
-    pair<vector<float>, vector<int>> heapDijkstra(int vertex){
-        if(negative_weights){
-            cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
-            return {};
-        }
+    // pair<vector<float>, vector<int>> heapDijkstra(int vertex){ // using Fibonacci heap
+    //     if(negative_weights){
+    //         cout << "Graph has negative weights, cannot use Dijkstra's algorithm\n";
+    //         return {};
+    //     }
 
-        vector<float> distance(n, max_float);
-        vector<bool> visited(n, 0);                 
-        vector<int> parent(n, -1);
-        FibonacciHeap heap;
-        vector<Node*> vertices(n);
+    //     vector<float> distance(n, max_float);
+    //     vector<bool> visited(n, 0);                 
+    //     vector<int> parent(n, -1);
+    //     FibonacciHeap heap;
+    //     vector<Node*> vertices(n);
 
-        for (int i = 0; i < n; i++) {
-            vertices[i] = new Node(i + 1, max_float);
-            heap.insertVertex(vertices[i]);
-        }
+    //     for (int i = 0; i < n; i++) {
+    //         vertices[i] = new Node(i + 1, max_float);
+    //         heap.insertVertex(vertices[i]);
+    //     }
 
-        vertices[vertex - 1]->key = 0;
-        heap.decreaseKey(0, vertices[vertex - 1]);
+    //     vertices[vertex - 1]->key = 0;
+    //     heap.decreaseKey(0, vertices[vertex - 1]);
 
-        while(!heap.isEmpty()){
-            Node* current = heap.deleteMin();
-            visited[current->data - 1] = 1;
-            distance[current->data - 1] = current->key;
+    //     while(!heap.isEmpty()){
+    //         Node* current = heap.deleteMin();
+    //         visited[current->data - 1] = 1;
+    //         distance[current->data - 1] = current->key;
             
-            for (int i = 0; i < adj_v.v[current->data - 1].size(); i++) {           // assume graph is represented by vector
-                if(!visited[adj_v.v[current->data - 1][i] - 1]){
-                    if(current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])] < vertices[adj_v.v[current->data - 1][i] - 1]->key){
-                        vertices[adj_v.v[current->data - 1][i] - 1]->key = current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])];
-                        heap.decreaseKey(vertices[adj_v.v[current->data - 1][i] - 1]->key, vertices[adj_v.v[current->data - 1][i] - 1]);
-                        parent[adj_v.v[current->data - 1][i] - 1] = current->data;
-                    }
-                }
-            }
-        }
+    //         for (int i = 0; i < adj_v.v[current->data - 1].size(); i++) {           // assume graph is represented by vector
+    //             if(!visited[adj_v.v[current->data - 1][i] - 1]){
+    //                 if(current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])] < vertices[adj_v.v[current->data - 1][i] - 1]->key){
+    //                     vertices[adj_v.v[current->data - 1][i] - 1]->key = current->key + weights[order_pair(current->data, adj_v.v[current->data - 1][i])];
+    //                     heap.decreaseKey(vertices[adj_v.v[current->data - 1][i] - 1]->key, vertices[adj_v.v[current->data - 1][i] - 1]);
+    //                     parent[adj_v.v[current->data - 1][i] - 1] = current->data;
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        return make_pair(distance, parent);
-    }
+    //     return make_pair(distance, parent);
+    // }
 
-    pair<int, int> order_pair(int v1, int v2){
+    pair<int, int> order_pair(int v1, int v2){ // order pair of vertices in ascending order
         return (v1 < v2) ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
     }
 
-    void path(int search, int target){
-        pair<vector<float>, vector<int>> result = heapDijkstra(search);
-        vector<float> distance = result.first;
-        vector<int> parent = result.second;
+    // void path(int search, int target){ // shortest path between two vertices
+    //     pair<vector<float>, vector<int>> result = heapDijkstra(search); // use heapDijkstra to find shortest path
+    //     vector<float> distance = result.first;
+    //     vector<int> parent = result.second;
 
-        ofstream output;
-        output.open("path(" + to_string(search) + "," + to_string(target) + ").txt");
-        output << distance[target - 1] << "\n";
-        vector<int> path;
-        int current = target;
-        while(current != search){
-            path.push_back(current);
-            current = parent[current - 1];
-        }
-        path.push_back(search);
-        for (int i = path.size() - 1; i >= 0; i--) {
-            output << path[i] << " ";
-        }
-        output.close();
-    }
+    //     ofstream output;
+    //     output.open("path(" + to_string(search) + "," + to_string(target) + ").txt");
+    //     output << distance[target - 1] << "\n";
+    //     vector<int> path;
+    //     int current = target;
+    //     while(current != search){
+    //         path.push_back(current);
+    //         current = parent[current - 1];
+    //     }
+    //     path.push_back(search);
+    //     for (int i = path.size() - 1; i >= 0; i--) {
+    //         output << path[i] << " ";
+    //     }
+    //     output.close();
+    // }
 
-    void bfs(int vertex){
-        vector<bool> visited(n, 0);
-        vector<int> parent(n, -1);
-        vector<int> level(n, -1);
-        queue<int> queue;
+    // pair<vector<int>, vector<int>> bfs(int vertex){
+    //     vector<bool> visited(n, 0);
+    //     vector<int> parent(n, -1);
+    //     vector<int> level(n, -1);
+    //     queue<int> queue;
 
-        visited[vertex - 1] = 1;
-        queue.push(vertex);                // push root to queue
-        level[vertex - 1] = 0;             // level of the root is 0
+    //     visited[vertex - 1] = 1;
+    //     queue.push(vertex);                // push root to queue
+    //     level[vertex - 1] = 0;             // level of the root is 0
 
-        while(!queue.empty()){
-            int current = queue.front();
-            queue.pop();
+    //     while(!queue.empty()){
+    //         int current = queue.front();
+    //         queue.pop();
 
-            if(representation){                // check if graph is represented by matrix or vector
-                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                    if(adj_mx.m[current - 1][i] && !visited[i]){
-                        visited[i] = 1;
-                        parent[i] = current;
-                        level[i] = level[current - 1] + 1;
-                        queue.push(i + 1);
-                    }
-                }
-            }
-            else{
-                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                    if(!visited[adj_v.v[current - 1][i] - 1]){
-                        visited[adj_v.v[current - 1][i] - 1] = 1;
-                        parent[adj_v.v[current - 1][i] - 1] = current;
-                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
-                        queue.push(adj_v.v[current - 1][i]);
-                    }
-                }
-            }
-        }
+    //         if(representation){                // check if graph is represented by matrix or vector
+    //             for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                 if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                     visited[i] = 1;
+    //                     parent[i] = current;
+    //                     level[i] = level[current - 1] + 1;
+    //                     queue.push(i + 1);
+    //                 }
+    //             }
+    //         }
+    //         else{
+    //             for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                 int v = adj_v.v[current - 1][i].first;
+    //                 if(!visited[v - 1]){
+    //                     visited[v - 1] = 1;
+    //                     parent[v - 1] = current;
+    //                     level[v - 1] = level[current - 1] + 1;
+    //                     queue.push(v);
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        ofstream output;
-        output.open("bfs(" + to_string(vertex) + ")spanning_tree.txt");
-        for (int i = 0; i < parent.size(); i++) {
-            output << parent[i] << " " << level[i] << "\n";
-        }
-        output.close();
-    }
+    //     return make_pair(parent, level);
 
-    void dfs(int vertex){
-        vector<bool> visited(n, 0);
-        vector<int> parent(n, -1);
-        vector<int> level(n, -1);
-        stack<int> stack;
+    //     // ofstream output;
+    //     // output.open("bfs(" + to_string(vertex) + ")spanning_tree.txt");
+    //     // for (int i = 0; i < parent.size(); i++) {
+    //     //     output << parent[i] << " " << level[i] << "\n";
+    //     // }
+    //     // output.close();
+    // }
 
-        visited[vertex - 1] = 1;
-        stack.push(vertex);                // push root to stack
-        level[vertex - 1] = 0;             // level of the root is 0
+    // void dfs(int vertex){
+    //     vector<bool> visited(n, 0);
+    //     vector<int> parent(n, -1);
+    //     vector<int> level(n, -1);
+    //     stack<int> stack;
 
-        while(!stack.empty()){
-            int current = stack.top();
-            stack.pop();
+    //     visited[vertex - 1] = 1;
+    //     stack.push(vertex);                // push root to stack
+    //     level[vertex - 1] = 0;             // level of the root is 0
+
+    //     while(!stack.empty()){
+    //         int current = stack.top();
+    //         stack.pop();
             
-            if(representation){                // check if graph is represented by matrix or vector
-                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                    if(adj_mx.m[current - 1][i] && !visited[i]){
-                        visited[i] = 1;
-                        parent[i] = current;
-                        level[i] = level[current - 1] + 1;
-                        stack.push(i + 1);
-                    }
-                }
-            }
-            else{
-                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                    if(!visited[adj_v.v[current - 1][i] - 1]){
-                        visited[adj_v.v[current - 1][i] - 1] = 1;
-                        parent[adj_v.v[current - 1][i] - 1] = current;
-                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
-                        stack.push(adj_v.v[current - 1][i]);
-                    }
-                }
-            }
-        }
+    //         if(representation){                // check if graph is represented by matrix or vector
+    //             for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                 if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                     visited[i] = 1;
+    //                     parent[i] = current;
+    //                     level[i] = level[current - 1] + 1;
+    //                     stack.push(i + 1);
+    //                 }
+    //             }
+    //         }
+    //         else{
+    //             for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                 if(!visited[adj_v.v[current - 1][i] - 1]){
+    //                     visited[adj_v.v[current - 1][i] - 1] = 1;
+    //                     parent[adj_v.v[current - 1][i] - 1] = current;
+    //                     level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+    //                     stack.push(adj_v.v[current - 1][i]);
+    //                 }
+    //             }
+    //         }
+    //     }
         
-        ofstream output;
-        output.open("dfs(" + to_string(vertex) + ")spanning_tree.txt");
-        for (int i = 0; i < parent.size(); i++) {
-            output << parent[i] << " " << level[i] << "\n";
-        }
-        output.close();
-    }
+    //     ofstream output;
+    //     output.open("dfs(" + to_string(vertex) + ")spanning_tree.txt");
+    //     for (int i = 0; i < parent.size(); i++) {
+    //         output << parent[i] << " " << level[i] << "\n";
+    //     }
+    //     output.close();
+    // }
 
-     int distance(int vertex1, int vertex2){    // distance between two vertices
-        if(vertex1 == vertex2)
-            return 0;
+    //  int distance(int vertex1, int vertex2){    // distance between two vertices
+    //     if(vertex1 == vertex2)
+    //         return 0;
 
-        vector<bool> visited(n, 0);
-        vector<int> level(n, -1);
-        queue<int> queue;
+    //     vector<bool> visited(n, 0);
+    //     vector<int> level(n, -1);
+    //     queue<int> queue;
 
-        visited[vertex1 - 1] = 1;
-        queue.push(vertex1);                // push root to queue
-        level[vertex1 - 1] = 0;             // level of the root is 0
+    //     visited[vertex1 - 1] = 1;
+    //     queue.push(vertex1);                // push root to queue
+    //     level[vertex1 - 1] = 0;             // level of the root is 0
 
-        while(!queue.empty()){
-            int current = queue.front();
-            queue.pop();
+    //     while(!queue.empty()){
+    //         int current = queue.front();
+    //         queue.pop();
 
-            if(representation){                // check if graph is represented by matrix or vector
-                for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                    if(adj_mx.m[current - 1][i] && !visited[i]){
-                        if(i + 1 == vertex2)
-                            return level[current - 1] + 1;
-                        visited[i] = 1;
-                        level[i] = level[current - 1] + 1;
-                        queue.push(i + 1);
-                    }
-                }
-            }
-            else{
-                for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                    if(!visited[adj_v.v[current - 1][i] - 1]){
-                        if(adj_v.v[current - 1][i] == vertex2)
-                            return level[current - 1] + 1;
-                        visited[adj_v.v[current - 1][i] - 1] = 1;
-                        level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
-                        queue.push(adj_v.v[current - 1][i]);
-                    }
-                }
-            }
-        }
-        return -1;
-    }
+    //         if(representation){                // check if graph is represented by matrix or vector
+    //             for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                 if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                     if(i + 1 == vertex2)
+    //                         return level[current - 1] + 1;
+    //                     visited[i] = 1;
+    //                     level[i] = level[current - 1] + 1;
+    //                     queue.push(i + 1);
+    //                 }
+    //             }
+    //         }
+    //         else{
+    //             for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                 if(!visited[adj_v.v[current - 1][i] - 1]){
+    //                     if(adj_v.v[current - 1][i] == vertex2)
+    //                         return level[current - 1] + 1;
+    //                     visited[adj_v.v[current - 1][i] - 1] = 1;
+    //                     level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+    //                     queue.push(adj_v.v[current - 1][i]);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return -1;
+    // }
 
-    int diameter(){
-        int diameter = 0;
-        bool infinite = 0;
+    // int diameter(){
+    //     int diameter = 0;
+    //     bool infinite = 0;
         
-        for (int i = 0; i < n; i++) {
-            vector<bool> visited(n, 0);
-            vector<int> level(n, -1);
-            queue<int> queue;
+    //     for (int i = 0; i < n; i++) {
+    //         vector<bool> visited(n, 0);
+    //         vector<int> level(n, -1);
+    //         queue<int> queue;
 
-            visited[i] = 1;
-            queue.push(i + 1);                // push root to queue
-            level[i] = 0;                       // level of the root is 0
+    //         visited[i] = 1;
+    //         queue.push(i + 1);                // push root to queue
+    //         level[i] = 0;                       // level of the root is 0
 
-            while(!queue.empty()){
-                int current = queue.front();
-                queue.pop();
+    //         while(!queue.empty()){
+    //             int current = queue.front();
+    //             queue.pop();
 
-                if(representation){                // check if graph is represented by matrix or vector
-                    for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                        if(adj_mx.m[current - 1][i] && !visited[i]){
-                            visited[i] = 1;
-                            if(level[current - 1] + 1 > diameter)
-                                diameter = level[current - 1] + 1;
-                            level[i] = level[current - 1] + 1;
-                            queue.push(i + 1);
-                        }
-                    }
-                }
-                else{
-                    for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                        if(!visited[adj_v.v[current - 1][i] - 1]){
-                            visited[adj_v.v[current - 1][i] - 1] = 1;
-                            if(level[current - 1] + 1 > diameter)
-                                diameter = level[current - 1] + 1;
-                            level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
-                            queue.push(adj_v.v[current - 1][i]);
-                        }
-                    }
-                }
-            }
+    //             if(representation){                // check if graph is represented by matrix or vector
+    //                 for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                     if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                         visited[i] = 1;
+    //                         if(level[current - 1] + 1 > diameter)
+    //                             diameter = level[current - 1] + 1;
+    //                         level[i] = level[current - 1] + 1;
+    //                         queue.push(i + 1);
+    //                     }
+    //                 }
+    //             }
+    //             else{
+    //                 for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                     if(!visited[adj_v.v[current - 1][i] - 1]){
+    //                         visited[adj_v.v[current - 1][i] - 1] = 1;
+    //                         if(level[current - 1] + 1 > diameter)
+    //                             diameter = level[current - 1] + 1;
+    //                         level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+    //                         queue.push(adj_v.v[current - 1][i]);
+    //                     }
+    //                 }
+    //             }
+    //         }
             
-            if(i == 0){         // check if graph is connected, if not, diameter is infinite
-                for (int i = 0; i < visited.size(); i++) {
-                    if(!visited[i])
-                        return -1;
-                }
-            }
-        }
+    //         if(i == 0){         // check if graph is connected, if not, diameter is infinite
+    //             for (int i = 0; i < visited.size(); i++) {
+    //                 if(!visited[i])
+    //                     return -1;
+    //             }
+    //         }
+    //     }
 
-        return diameter;
-    }
+    //     return diameter;
+    // }
 
     // aproximate diameter
-    int aprox_diameter(int number_of_samples){
-        int diameter = 0;
-        bool infinite = 0;
+    // int aprox_diameter(int number_of_samples){
+    //     int diameter = 0;
+    //     bool infinite = 0;
         
-        for (int i = 0; i < number_of_samples; i++) {
-            vector<bool> visited(n, 0);
-            vector<int> level(n, -1);
-            queue<int> queue;
+    //     for (int i = 0; i < number_of_samples; i++) {
+    //         vector<bool> visited(n, 0);
+    //         vector<int> level(n, -1);
+    //         queue<int> queue;
 
-            int random_vertex = (rand() % n) + 1;
-            visited[random_vertex - 1] = 1;
-            queue.push(random_vertex);                // push root to queue
-            level[random_vertex - 1] = 0;                       // level of the root is 0
+    //         int random_vertex = (rand() % n) + 1;
+    //         visited[random_vertex - 1] = 1;
+    //         queue.push(random_vertex);                // push root to queue
+    //         level[random_vertex - 1] = 0;                       // level of the root is 0
 
-            while(!queue.empty()){
-                int current = queue.front();
-                queue.pop();
+    //         while(!queue.empty()){
+    //             int current = queue.front();
+    //             queue.pop();
 
-                if(representation){                // check if graph is represented by matrix or vector
-                    for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                        if(adj_mx.m[current - 1][i] && !visited[i]){
-                            visited[i] = 1;
-                            if(level[current - 1] + 1 > diameter)
-                                diameter = level[current - 1] + 1;
-                            level[i] = level[current - 1] + 1;
-                            queue.push(i + 1);
-                        }
-                    }
-                }
-                else{
-                    for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                        if(!visited[adj_v.v[current - 1][i] - 1]){
-                            visited[adj_v.v[current - 1][i] - 1] = 1;
-                            if(level[current - 1] + 1 > diameter)
-                                diameter = level[current - 1] + 1;
-                            level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
-                            queue.push(adj_v.v[current - 1][i]);
-                        }
-                    }
-                }
-            }
+    //             if(representation){                // check if graph is represented by matrix or vector
+    //                 for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                     if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                         visited[i] = 1;
+    //                         if(level[current - 1] + 1 > diameter)
+    //                             diameter = level[current - 1] + 1;
+    //                         level[i] = level[current - 1] + 1;
+    //                         queue.push(i + 1);
+    //                     }
+    //                 }
+    //             }
+    //             else{
+    //                 for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                     if(!visited[adj_v.v[current - 1][i] - 1]){
+    //                         visited[adj_v.v[current - 1][i] - 1] = 1;
+    //                         if(level[current - 1] + 1 > diameter)
+    //                             diameter = level[current - 1] + 1;
+    //                         level[adj_v.v[current - 1][i] - 1] = level[current - 1] + 1;
+    //                         queue.push(adj_v.v[current - 1][i]);
+    //                     }
+    //                 }
+    //             }
+    //         }
             
-            if(i == 0){
-                for (int i = 0; i < visited.size(); i++) {
-                    if(!visited[i])
-                        return -1;
-                }
-            }
-        }
+    //         if(i == 0){
+    //             for (int i = 0; i < visited.size(); i++) {
+    //                 if(!visited[i])
+    //                     return -1;
+    //             }
+    //         }
+    //     }
 
-        return diameter;
-    }
+    //     return diameter;
+    // }
 
-    void connected_components(){
-        vector<bool> visited(n, 0);
-        vector<vector <int>> components_vertices;
-        int components = 0;
+    // void connected_components(){
+    //     vector<bool> visited(n, 0);
+    //     vector<vector <int>> components_vertices;
+    //     int components = 0;
 
-        for (int i = 0; i < n; i++) {
-            if(!visited[i]){
-                components_vertices.push_back({});
-                components++;
-                queue<int> queue;
+    //     for (int i = 0; i < n; i++) {
+    //         if(!visited[i]){
+    //             components_vertices.push_back({});
+    //             components++;
+    //             queue<int> queue;
 
-                visited[i] = 1;
-                queue.push(i + 1);                //push first vertex of component to queue
-                components_vertices[components - 1].push_back(i + 1);
+    //             visited[i] = 1;
+    //             queue.push(i + 1);                //push first vertex of component to queue
+    //             components_vertices[components - 1].push_back(i + 1);
 
-                while(!queue.empty()){
-                    int current = queue.front();
-                    queue.pop();
+    //             while(!queue.empty()){
+    //                 int current = queue.front();
+    //                 queue.pop();
 
-                    if(representation){                // check if graph is represented by matrix or vector
-                        for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
-                            if(adj_mx.m[current - 1][i] && !visited[i]){
-                                visited[i] = 1;
-                                components_vertices[components - 1].push_back(i + 1);
-                                queue.push(i + 1);
-                            }
-                        }
-                    }
-                    else{
-                        for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
-                            if(!visited[adj_v.v[current - 1][i] - 1]){
-                                visited[adj_v.v[current - 1][i] - 1] = 1;
-                                components_vertices[components - 1].push_back(adj_v.v[current - 1][i]);
-                                queue.push(adj_v.v[current - 1][i]);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    //                 if(representation){                // check if graph is represented by matrix or vector
+    //                     for (int i = 0; i < adj_mx.m[current - 1].size(); i++) {
+    //                         if(adj_mx.m[current - 1][i] && !visited[i]){
+    //                             visited[i] = 1;
+    //                             components_vertices[components - 1].push_back(i + 1);
+    //                             queue.push(i + 1);
+    //                         }
+    //                     }
+    //                 }
+    //                 else{
+    //                     for (int i = 0; i < adj_v.v[current - 1].size(); i++) {
+    //                         if(!visited[adj_v.v[current - 1][i] - 1]){
+    //                             visited[adj_v.v[current - 1][i] - 1] = 1;
+    //                             components_vertices[components - 1].push_back(adj_v.v[current - 1][i]);
+    //                             queue.push(adj_v.v[current - 1][i]);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
         
-        ofstream output;
-        output.open("connected_components.txt");
-        output << components << "\n";
-        sort(components_vertices.begin(), components_vertices.end(), [](const vector<int> & a, const vector<int> & b){ return a.size() > b.size(); }); // order components by size in descending order
-        for (int i = 0; i < components_vertices.size(); i++) {
-            output << components_vertices[i].size() << "\n";
-            for (int j = 0; j < components_vertices[i].size(); j++) {
-                output << components_vertices[i][j] << " ";
-            }
-            output << "\n";
-        }
-    }
+    //     ofstream output;
+    //     output.open("connected_components.txt");
+    //     output << components << "\n";
+    //     sort(components_vertices.begin(), components_vertices.end(), [](const vector<int> & a, const vector<int> & b){ return a.size() > b.size(); }); // order components by size in descending order
+    //     for (int i = 0; i < components_vertices.size(); i++) {
+    //         output << components_vertices[i].size() << "\n";
+    //         for (int j = 0; j < components_vertices[i].size(); j++) {
+    //             output << components_vertices[i][j] << " ";
+    //         }
+    //         output << "\n";
+    //     }
+    // }
 
     void output_file(){
         ofstream output;
